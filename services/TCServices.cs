@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using thecrims_bot.models;
 using thecrims_bot.parser;
@@ -20,14 +21,17 @@ namespace thecrims_bot.services
         private HttpClientHandler handler;
         private CookieContainer cookies;
         private Uri url;
+
         public bool logged;
-        int robs = 0;
         public User user { get; set; }
         public Robberies rob { get; set; }
         public List<Robberies> robberies { get; set; }
         public List<Nightclubs> nightclubs { get; set; }
         public List<Drug> drugs { get; set; }
-        TCParser parser = new TCParser();
+
+        public TCParser parser;
+
+        public string msgRip;
 
         public TCServices()
         {
@@ -38,6 +42,7 @@ namespace thecrims_bot.services
             robberies = new List<Robberies>();
             nightclubs = new List<Nightclubs>();
             drugs = new List<Drug>();
+            parser = new TCParser();
             handler = new HttpClientHandler() { CookieContainer = cookies };
             client = new HttpClient(handler) { BaseAddress = url };
             client.DefaultRequestHeaders.Clear();
@@ -56,15 +61,24 @@ namespace thecrims_bot.services
             if (res.IsSuccessStatusCode)
             {
 
+                //await getUser();
+                //await getRobberies();
+                //await Rob();
+                //await getNightclubs();
+                //await enterNightclub();
                 await setXRequest();
+                await getUser();
                 Console.WriteLine("Logado com sucesso!");
                 this.logged = true;                
             }
             
+            //await Roubar();
         }
 
         public async Task setXRequest()
         {
+            //TCParser parser = new TCParser();
+
             var getNewspaper = await client.GetAsync("newspaper#/newspaper");
             getNewspaper.EnsureSuccessStatusCode();
             string newspaperHtml = getNewspaper.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -75,6 +89,7 @@ namespace thecrims_bot.services
 
         public async Task getUser()
         {
+            //TCParser parser = new TCParser();
 
             var getTasks = await client.GetAsync("api/v1/user/tasks");
             getTasks.EnsureSuccessStatusCode();
@@ -85,6 +100,7 @@ namespace thecrims_bot.services
 
         public async Task getRobberies()
         {
+            //TCParser parser = new TCParser();
             string jsonRobberies = "";
 
             try
@@ -101,12 +117,12 @@ namespace thecrims_bot.services
 
             this.robberies = parser.parseRobberies(jsonRobberies);
             this.rob = getBestRob();
-            this.user = parser.parseUser(jsonRobberies);
 
         }
 
         public async Task getNightclubs()
         {
+            //TCParser parser = new TCParser();
 
             var getNightclubs = await client.GetAsync("api/v1/nightclubs");
             getNightclubs.EnsureSuccessStatusCode();
@@ -114,19 +130,17 @@ namespace thecrims_bot.services
 
             this.nightclubs = parser.parseNightclubs(jsonNightclubs);
 
-
         }
 
         public async Task enterNightclub()
         {
-            Console.WriteLine();
             await getNightclubs();
 
             Nightclubs nightclub = new Nightclubs();
 
             nightclub = this.nightclubs.Where(w => w.business_id == 1).First();
 
-            Console.WriteLine("Entrando na " + nightclub.name, Color.Red);
+            Console.WriteLine("Entrando na " + nightclub.name, Color.BlueViolet);
 
             string jsonEnterNightclub = "{\"id\": \"" + nightclub.id.ToString() + "\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var enterNightClub = await client.PostAsync("api/v1/nightclub", new StringContent(jsonEnterNightclub, Encoding.UTF8, "application/json"));
@@ -137,22 +151,26 @@ namespace thecrims_bot.services
 
             await buyDrugs(jsonDrugs);
 
+            Console.WriteLine("Saindo da " + nightclub.name, Color.BlueViolet);
+
             string jsonExitNightClub = "{\"exit_key\": \"" + nightclub.id.ToString() + "\", \"e_at\":null, \"reason\":\"Manual exit\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var exitNightClub = await client.PostAsync("api/v1/nightclub/exit", new StringContent(jsonExitNightClub, Encoding.UTF8, "application/json"));
-            exitNightClub.EnsureSuccessStatusCode();
-            Console.WriteLine("");
+            exitNightClub.EnsureSuccessStatusCode();           
 
         }
 
         public async Task buyDrugs(string jsonDrugs)
         {
+
+            //TCParser parser = new TCParser();
+
             this.drugs = parser.parseDrugs(jsonDrugs);
 
-            Console.WriteLine("Comprando " + this.drugs[0].name, Color.Red);
-            
+            Console.WriteLine("Comprando " + this.drugs[0].name, Color.Fuchsia);
+
             string jsonBuyDrugs = "{\"id\": " + this.drugs[0].id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
-            _ = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
-            
+            var buyDrugs = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
+            //buyDrugs.EnsureSuccessStatusCode();
 
         }
 
@@ -160,17 +178,10 @@ namespace thecrims_bot.services
         {
 
             await getRobberies();
-         
 
             if (this.rob.energy > this.user.stamina)
             {
-                try {
-                    await enterNightclub();
-                } catch {
-                    Console.WriteLine("Erro ao fazer fluxo do nightclub, tentar de novo.");
-                    await enterNightclub();
-                }
-                
+                await enterNightclub();
             }
 
             Console.WriteLine("Roubando " + this.rob.translated_name, Color.Yellow);
@@ -180,28 +191,63 @@ namespace thecrims_bot.services
             try
             {
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
-                robs += 1;
-                this.user = parser.parseUser(rob.Content.ReadAsStringAsync().GetAwaiter().GetResult());
-                Console.WriteLine(user.ToString(), Color.Green);
-                if (robs % 5 == 0)
-                {
-                    Console.WriteLine("Roubos da sessão :" + robs, Color.DarkGreen);
-                }
-
+                string stringRob = rob.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                this.user = parser.parseUser(stringRob);
+                Console.WriteLine("Sucesso! " + "Respeito: " + this.user.respect + " Inteligência: " + this.user.intelligence + " Força: " + this.user.strength + " Carisma: " + this.user.charisma + " Resistência: " + this.user.tolerance, Color.Green);
+                Console.WriteLine("Estamina: " + this.user.stamina + "%" + " Vício: " + this.user.addiction + "%" + " Tickets: " + this.user.tickets, Color.Green);
+                Console.WriteLine("Grana: " + this.user.cash, Color.Green);
             }
             catch
             {
                 Console.Write("Erro!", Color.Red);
-                Console.Write("Tentando novamente...");
-                await Rob();
+
+                if (await getRip())
+                {
+                    Console.WriteLine(this.msgRip);
+                    Console.WriteLine("Tentando novamente em 5 minutos...");
+                    Thread.Sleep(5 * 60 * 1000);
+                    await Rob();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...");
+                    await Rob();
+                }
             }
         }
 
         public Robberies getBestRob()
         {
- 
-            return this.robberies.OrderByDescending(id => id.difficulty).First(x => x.successprobability == 100);
 
+            return this.robberies.OrderByDescending(id => id.id).First(x => x.successprobability >= 90);
+
+        }
+
+        public async Task<bool> getRip()
+        {
+            try
+            {
+                var getRip = await client.GetAsync("api/v1/rip");
+                getRip.EnsureSuccessStatusCode();
+                string jsonRip = getRip.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                string mensagem = parser.parseRip(jsonRip);
+
+                if (string.IsNullOrEmpty(mensagem))
+                {
+                    return await Task.FromResult(false);
+                } else
+                {
+                    this.msgRip = mensagem;
+                    return await Task.FromResult(true);
+                }
+
+            }
+            catch
+            {
+                return await getRip();
+            }
+            
         }
 
     }
