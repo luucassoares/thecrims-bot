@@ -32,18 +32,19 @@ namespace thecrims_bot
             Console.WriteLine("Bem vindo ao The Crims Bot!");
             Console.WriteLine("Realize o login");
             Console.Write("Usuário -> ");
-            string username = Console.ReadLine();
+            string username = "lukinods";
             Console.Write("Senha -> ");
-            string password = Console.ReadLine();
+            string password = "4db559c0faaa";
 
             await service.LoginAsync(username, password);
+
+            await service.getUser();
 
             if (service.logged)
             {
 
                 while (true)
                 {
-                    await service.getUser();
                     await service.Rob();
                 }
 
