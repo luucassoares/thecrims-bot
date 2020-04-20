@@ -118,13 +118,14 @@ namespace thecrims_bot.services
 
         public async Task enterNightclub()
         {
+            Console.WriteLine();
             await getNightclubs();
 
             Nightclubs nightclub = new Nightclubs();
 
             nightclub = this.nightclubs.Where(w => w.business_id == 1).First();
 
-            Console.WriteLine("Entrando na " + nightclub.name, Color.Blue);
+            Console.WriteLine("Entrando na " + nightclub.name, Color.Red);
 
             string jsonEnterNightclub = "{\"id\": \"" + nightclub.id.ToString() + "\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var enterNightClub = await client.PostAsync("api/v1/nightclub", new StringContent(jsonEnterNightclub, Encoding.UTF8, "application/json"));
@@ -146,7 +147,7 @@ namespace thecrims_bot.services
         {
             this.drugs = parser.parseDrugs(jsonDrugs);
 
-            Console.WriteLine("Comprando " + this.drugs[0].name, Color.Purple);
+            Console.WriteLine("Comprando " + this.drugs[0].name, Color.Red);
             
             string jsonBuyDrugs = "{\"id\": " + this.drugs[0].id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             _ = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
@@ -162,7 +163,13 @@ namespace thecrims_bot.services
 
             if (this.rob.energy > this.user.stamina)
             {
-                await enterNightclub();
+                try {
+                    await enterNightclub();
+                } catch {
+                    Console.WriteLine("Erro ao fazer fluxo do nightclub, tentar de novo.");
+                    await enterNightclub();
+                }
+                
             }
 
             Console.WriteLine("Roubando " + this.rob.translated_name, Color.Yellow);

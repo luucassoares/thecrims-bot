@@ -66,7 +66,7 @@ namespace thecrims_bot.models
 
         public override string ToString()
         {
-            return String.Format("Respect: {0}, Tolerance: {1}, Strength: {2}\nCharisma: {3}, Intelligence: {4}, Cash: {5}\nStamina: {6}, Level: {7}, Tickets: {8}\nSingleRobberyPower: {9}", respect, tolerance, strength, charisma, intelligence, cash, stamina, level, tickets, single_robbery_power);
+            return String.Format("Respect: {0}, Tolerance: {1}, Strength: {2}\nCharisma: {3}, Intelligence: {4}, Cash: {5}\nStamina: {6}, Level: {7}, Tickets: {8}\nSingleRobberyPower: {9}, Gang: {10}", respect, tolerance, strength, charisma, intelligence, cash, stamina, level, tickets, single_robbery_power, gang != null);
         }
     }
 }
