@@ -59,25 +59,17 @@ namespace thecrims_bot.services
             var res = await client.SendAsync(req);
 
             if (res.IsSuccessStatusCode)
-            {
-
-                //await getUser();
-                //await getRobberies();
-                //await Rob();
-                //await getNightclubs();
-                //await enterNightclub();
+            { 
                 await setXRequest();
                 await getUser();
                 Console.WriteLine("Logado com sucesso!");
                 this.logged = true;                
             }
             
-            //await Roubar();
         }
 
         public async Task setXRequest()
         {
-            //TCParser parser = new TCParser();
 
             var getNewspaper = await client.GetAsync("newspaper#/newspaper");
             getNewspaper.EnsureSuccessStatusCode();
@@ -89,8 +81,7 @@ namespace thecrims_bot.services
 
         public async Task getUser()
         {
-            //TCParser parser = new TCParser();
-
+            
             var getTasks = await client.GetAsync("api/v1/user/tasks");
             getTasks.EnsureSuccessStatusCode();
             string jsonTasks = getTasks.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -100,7 +91,6 @@ namespace thecrims_bot.services
 
         public async Task getRobberies()
         {
-            //TCParser parser = new TCParser();
             string jsonRobberies = "";
 
             try
@@ -122,8 +112,7 @@ namespace thecrims_bot.services
 
         public async Task getNightclubs()
         {
-            //TCParser parser = new TCParser();
-
+            
             var getNightclubs = await client.GetAsync("api/v1/nightclubs");
             getNightclubs.EnsureSuccessStatusCode();
             string jsonNightclubs = getNightclubs.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -162,7 +151,6 @@ namespace thecrims_bot.services
         public async Task buyDrugs(string jsonDrugs)
         {
 
-            //TCParser parser = new TCParser();
 
             this.drugs = parser.parseDrugs(jsonDrugs);
 
@@ -170,8 +158,7 @@ namespace thecrims_bot.services
 
             string jsonBuyDrugs = "{\"id\": " + this.drugs[0].id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var buyDrugs = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
-            //buyDrugs.EnsureSuccessStatusCode();
-
+            
         }
 
         public async Task Rob()
