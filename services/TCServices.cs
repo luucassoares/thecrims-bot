@@ -21,6 +21,7 @@ namespace thecrims_bot.services
         private CookieContainer cookies;
         private Uri url;
         public bool logged;
+        int robs = 0;
         public User user { get; set; }
         public Robberies rob { get; set; }
         public List<Robberies> robberies { get; set; }
@@ -179,8 +180,13 @@ namespace thecrims_bot.services
             try
             {
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
+                robs += 1;
                 this.user = parser.parseUser(rob.Content.ReadAsStringAsync().GetAwaiter().GetResult());
                 Console.WriteLine(user.ToString(), Color.Green);
+                if (robs % 5 == 0)
+                {
+                    Console.WriteLine("Roubos da sessão :" + robs, Color.DarkGreen);
+                }
 
             }
             catch
