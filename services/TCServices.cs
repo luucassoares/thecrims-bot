@@ -180,6 +180,12 @@ namespace thecrims_bot.services
 
             if (this.rob.energy > this.user.stamina)
             {
+
+                if(this.user.addiction > 40)
+                {
+                    await Detox();
+                }
+
                 await enterNightclub();
             }
 
@@ -192,7 +198,9 @@ namespace thecrims_bot.services
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
                 string stringRob = rob.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 this.user = parser.parseUser(stringRob);
-                Console.WriteLine(user.ToString(), Color.Green);
+                Console.WriteLine("Sucesso! " + "Respeito: " + this.user.respect + " Inteligência: " + this.user.intelligence + " Força: " + this.user.strength + " Carisma: " + this.user.charisma + " Resistência: " + this.user.tolerance, Color.Green);
+                Console.WriteLine("Estamina: " + this.user.stamina + "%" + " Vício: " + this.user.addiction + "%" + " Tickets: " + this.user.tickets, Color.Green);
+                Console.WriteLine("Grana: " + this.user.cash, Color.Green);
             }
             catch
             {
@@ -201,22 +209,50 @@ namespace thecrims_bot.services
                 if (await getRip())
                 {
                     Console.WriteLine(this.msgRip, Color.DarkRed);
-                    Console.WriteLine("Tentando novamente em 5 minutos...");
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
                     Thread.Sleep(5 * 60 * 1000);
                     await Rob();
                 }
                 else
                 {
 
-                    Console.Write("Tentando novamente...");
+                    Console.Write("Tentando novamente...", Color.Yellow);
                     await Rob();
+                }
+            }
+        }
+
+        public async Task Detox()
+        {
+
+            Console.WriteLine("\nAplicando Detox...\n", Color.BlueViolet);
+
+            try
+            {
+                var detox = await client.PostAsync("api/v1/hospital/detox", null);
+            }
+            catch
+            {
+                if (await getRip())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await Detox();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await Detox();
                 }
             }
         }
 
         public Robberies getBestRob()
         {
-            return this.robberies.OrderByDescending(id => id.difficulty).First(x => x.successprobability == 100);
+
+            return this.robberies.OrderByDescending(id => id.id).First(x => x.successprobability >= 100);
 
         }
 
