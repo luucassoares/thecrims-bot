@@ -220,7 +220,7 @@ namespace thecrims_bot.services
         public Robberies getBestRob()
         {
 
-            return this.robberies.OrderByDescending(id => id.id).First(x => x.successprobability >= 90);
+            return this.robberies.OrderByDescending(id => id.difficulty).First(x => x.successprobability == 100);
 
         }
 
