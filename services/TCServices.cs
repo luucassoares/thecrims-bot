@@ -20,13 +20,13 @@ namespace thecrims_bot.services
         private HttpClientHandler handler;
         private CookieContainer cookies;
         private Uri url;
-        private int robs = 0;
         public bool logged;
         public User user { get; set; }
         public Robberies rob { get; set; }
         public List<Robberies> robberies { get; set; }
         public List<Nightclubs> nightclubs { get; set; }
         public List<Drug> drugs { get; set; }
+        TCParser parser = new TCParser();
 
         public TCServices()
         {
@@ -55,23 +55,15 @@ namespace thecrims_bot.services
             if (res.IsSuccessStatusCode)
             {
 
-                //await getUser();
-                //await getRobberies();
-                //await Rob();
-                //await getNightclubs();
-                //await enterNightclub();
                 await setXRequest();
                 Console.WriteLine("Logado com sucesso!");
                 this.logged = true;                
             }
             
-            //await Roubar();
         }
 
         public async Task setXRequest()
         {
-            TCParser parser = new TCParser();
-
             var getNewspaper = await client.GetAsync("newspaper#/newspaper");
             getNewspaper.EnsureSuccessStatusCode();
             string newspaperHtml = getNewspaper.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -82,7 +74,6 @@ namespace thecrims_bot.services
 
         public async Task getUser()
         {
-            TCParser parser = new TCParser();
 
             var getTasks = await client.GetAsync("api/v1/user/tasks");
             getTasks.EnsureSuccessStatusCode();
@@ -93,7 +84,6 @@ namespace thecrims_bot.services
 
         public async Task getRobberies()
         {
-            TCParser parser = new TCParser();
             string jsonRobberies = "";
 
             try
@@ -116,7 +106,6 @@ namespace thecrims_bot.services
 
         public async Task getNightclubs()
         {
-            TCParser parser = new TCParser();
 
             var getNightclubs = await client.GetAsync("api/v1/nightclubs");
             getNightclubs.EnsureSuccessStatusCode();
@@ -124,7 +113,6 @@ namespace thecrims_bot.services
 
             this.nightclubs = parser.parseNightclubs(jsonNightclubs);
 
-            //this.user = parser.parseUser(jsonNightclubs);
 
         }
 
@@ -136,7 +124,7 @@ namespace thecrims_bot.services
 
             nightclub = this.nightclubs.Where(w => w.business_id == 1).First();
 
-            Console.WriteLine("Entrando na " + nightclub.name);
+            Console.WriteLine("Entrando na " + nightclub.name, Color.Blue);
 
             string jsonEnterNightclub = "{\"id\": \"" + nightclub.id.ToString() + "\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var enterNightClub = await client.PostAsync("api/v1/nightclub", new StringContent(jsonEnterNightclub, Encoding.UTF8, "application/json"));
@@ -150,29 +138,25 @@ namespace thecrims_bot.services
             string jsonExitNightClub = "{\"exit_key\": \"" + nightclub.id.ToString() + "\", \"e_at\":null, \"reason\":\"Manual exit\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             var exitNightClub = await client.PostAsync("api/v1/nightclub/exit", new StringContent(jsonExitNightClub, Encoding.UTF8, "application/json"));
             exitNightClub.EnsureSuccessStatusCode();
-            Console.WriteLine();
+            Console.WriteLine("");
 
         }
 
         public async Task buyDrugs(string jsonDrugs)
         {
-
-            TCParser parser = new TCParser();
-
             this.drugs = parser.parseDrugs(jsonDrugs);
 
-            Console.WriteLine("Comprando " + this.drugs[0].name);
+            Console.WriteLine("Comprando " + this.drugs[0].name, Color.Purple);
             
             string jsonBuyDrugs = "{\"id\": " + this.drugs[0].id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
-            var buyDrugs = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
-            //buyDrugs.EnsureSuccessStatusCode();
+            _ = await client.PostAsync("api/v1/nightclub/drug", new StringContent(jsonBuyDrugs, Encoding.UTF8, "application/json"));
+            
 
         }
 
         public async Task Rob()
         {
 
-            TCParser parser = new TCParser();
             await getRobberies();
          
 
@@ -181,7 +165,7 @@ namespace thecrims_bot.services
                 await enterNightclub();
             }
 
-            Console.WriteLine("Roubando " + this.rob.translated_name);
+            Console.WriteLine("Roubando " + this.rob.translated_name, Color.Yellow);
 
             string jsonRob = "{\"id\": " + this.rob.id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
 
@@ -189,12 +173,7 @@ namespace thecrims_bot.services
             {
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
                 this.user = parser.parseUser(rob.Content.ReadAsStringAsync().GetAwaiter().GetResult());
-                robs += 1;
-                if (robs % 5 == 0)
-                {
-                    Console.WriteLine("Roubos efetuados: " + robs);
-                }
-                Console.WriteLine(user.ToString());
+                Console.WriteLine(user.ToString(), Color.Green);
 
             }
             catch
@@ -207,7 +186,7 @@ namespace thecrims_bot.services
 
         public Robberies getBestRob()
         {
-
+ 
             return this.robberies.OrderByDescending(id => id.difficulty).First(x => x.successprobability == 100);
 
         }

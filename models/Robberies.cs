@@ -22,5 +22,9 @@ namespace thecrims_bot.models
         public string successprobability_image { get; set; }
         public string long_name { get; set; }
 
+        public override string ToString()
+        {
+            return String.Format("ID: {0} - Name: {1}", id, name);
+        }
     }
 }
