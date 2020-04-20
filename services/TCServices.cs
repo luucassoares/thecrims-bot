@@ -181,7 +181,7 @@ namespace thecrims_bot.services
             if (this.rob.energy > this.user.stamina)
             {
 
-                if(this.user.addiction > 40)
+                if(this.user.addiction > 5)
                 {
                     await Detox();
                 }
@@ -198,9 +198,7 @@ namespace thecrims_bot.services
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
                 string stringRob = rob.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 this.user = parser.parseUser(stringRob);
-                Console.WriteLine("Sucesso! " + "Respeito: " + this.user.respect + " Inteligência: " + this.user.intelligence + " Força: " + this.user.strength + " Carisma: " + this.user.charisma + " Resistência: " + this.user.tolerance, Color.Green);
-                Console.WriteLine("Estamina: " + this.user.stamina + "%" + " Vício: " + this.user.addiction + "%" + " Tickets: " + this.user.tickets, Color.Green);
-                Console.WriteLine("Grana: " + this.user.cash, Color.Green);
+                Console.WriteLine(user.ToString(), Color.Green);
             }
             catch
             {

@@ -65,14 +65,9 @@ namespace thecrims_bot.models
         public string fingerprint { get; set; }
 
 
-
-        //Console.WriteLine("Sucesso! " + "Respeito: " + this.user.respect + " Inteligência: " + this.user.intelligence + " Força: " + this.user.strength + " Carisma: " + this.user.charisma + " Resistência: " + this.user.tolerance, Color.Green);
-        //Console.WriteLine("Estamina: " + this.user.stamina + "%" + " Vício: " + this.user.addiction + "%" + " Tickets: " + this.user.tickets, Color.Green);
-        //Console.WriteLine("Grana: " + this.user.cash, Color.Green);
-
         public override string ToString()
         {
-            return String.Format("Respeito: {0} - Inteligencia: {1} - Força: {2} - Carisma: {3} - Resistência: {4}\nEstamina: {5} - Vício: {6}% - Tickets: {7}\nGrana: {8} - Gang: {9}\nRoubo solo: {10} - Roubo Solo: {11} - Roubo Gang: {12}\n",
+            return String.Format("Respeito: {0} - Inteligencia: {1} - Força: {2} - Carisma: {3} - Resistência: {4}\nEstamina: {5} - Vício: {6}% - Tickets: {7}\nGrana: {8} - Gang: {9}\nRoubo solo: {10} - Roubo Solo: {11} - Roubo Gang: {12}",
                 respect, intelligence, strength, charisma, tolerance, stamina, addiction, tickets, cash, gang != null, robbery_power, single_robbery_power, gang_robbery_power);
         }
     }
