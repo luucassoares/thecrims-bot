@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace thecrims_bot.models
@@ -68,7 +69,7 @@ namespace thecrims_bot.models
         public override string ToString()
         {
             return String.Format("Respeito: {0} - Inteligencia: {1} - Força: {2} - Carisma: {3} - Resistência: {4}\nEstamina: {5} - Vício: {6}% - Tickets: {7}\nGrana: {8} - Gang: {9}\nRoubo solo: {10} - Roubo Solo: {11} - Roubo Gang: {12}",
-                respect, intelligence, strength, charisma, tolerance, stamina, addiction, tickets, cash, gang != null, robbery_power, single_robbery_power, gang_robbery_power);
+                respect, intelligence, strength, charisma, tolerance, stamina, addiction, tickets, cash.ToString("C", CultureInfo.CurrentCulture), gang != null, robbery_power, single_robbery_power, gang_robbery_power);
         }
     }
 }
