@@ -28,9 +28,11 @@ namespace thecrims_bot.services
         public List<Robberies> robberies { get; set; }
         public List<Nightclubs> nightclubs { get; set; }
         public List<Drug> drugs { get; set; }
+        public PlannedRobbery plannedRobbery { get; set; }
+        public List<GangRobbery> gangRobbery { get; set; }
+        public List<String> gangsUrl { get; set; }
 
         public TCParser parser;
-
         public string msgRip;
 
         public TCServices()
@@ -42,6 +44,9 @@ namespace thecrims_bot.services
             robberies = new List<Robberies>();
             nightclubs = new List<Nightclubs>();
             drugs = new List<Drug>();
+            plannedRobbery = new PlannedRobbery();
+            gangRobbery = new List<GangRobbery>();
+            gangsUrl = new List<String>();
             parser = new TCParser();
             handler = new HttpClientHandler() { CookieContainer = cookies };
             client = new HttpClient(handler) { BaseAddress = url };
@@ -61,8 +66,7 @@ namespace thecrims_bot.services
             if (res.IsSuccessStatusCode)
             {
                 await setXRequest();
-                await getUser();
-                Console.WriteLine("Logado com sucesso!");
+                await getUser();                
                 this.logged = true;                
             }
             
@@ -77,6 +81,21 @@ namespace thecrims_bot.services
 
             string xrequest = parser.getRequest(newspaperHtml);
             this.client.DefaultRequestHeaders.Add("x-request", xrequest);
+        }
+
+        public async Task Logout()
+        {
+            try
+            {
+                Console.WriteLine("Encerrando sessão...", Color.Yellow);
+                var logout = await client.GetAsync("logout");
+                logout.EnsureSuccessStatusCode();
+            }
+            catch
+            {
+                return;
+            }
+            
         }
 
         public async Task getUser()
@@ -101,12 +120,13 @@ namespace thecrims_bot.services
                 jsonRobberies = getRobberies.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 this.robberies = parser.parseRobberies(jsonRobberies);
                 this.rob = getBestRob();
+                this.gangRobbery = parser.parseGangRobbery(jsonRobberies);
             }
             catch
             {              
                 Console.WriteLine("Erro!", Color.Red);
 
-                if (await getRip())
+                if (await getRip() || await getPrison())
                 {
                     Console.WriteLine(this.msgRip, Color.DarkRed);
                     Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
@@ -115,7 +135,6 @@ namespace thecrims_bot.services
                 }
                 else
                 {
-
                     Console.Write("Tentando novamente...", Color.Yellow);
                     await getRobberies();
                 }
@@ -142,22 +161,53 @@ namespace thecrims_bot.services
 
             nightclub = this.nightclubs.Where(w => w.business_id == 1).First();
 
-            Console.WriteLine("\nEntrando na " + nightclub.name, Color.BlueViolet);
+            
+            try
+            {
+                Console.WriteLine("\nEntrando na " + nightclub.name, Color.BlueViolet);
 
-            string jsonEnterNightclub = "{\"id\": \"" + nightclub.id.ToString() + "\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
-            var enterNightClub = await client.PostAsync("api/v1/nightclub", new StringContent(jsonEnterNightclub, Encoding.UTF8, "application/json"));
-            enterNightClub.EnsureSuccessStatusCode();
-            var enterNightClubGet = await client.GetAsync("api/v1/nightclub");
+                string jsonEnterNightclub = "{\"id\": \"" + nightclub.id.ToString() + "\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
 
-            string jsonDrugs = enterNightClubGet.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                var enterNightClub = await client.PostAsync("api/v1/nightclub", new StringContent(jsonEnterNightclub, Encoding.UTF8, "application/json"));
+                enterNightClub.EnsureSuccessStatusCode();
+                var enterNightClubGet = await client.GetAsync("api/v1/nightclub");
 
-            await buyDrugs(jsonDrugs);
+                string jsonDrugs = enterNightClubGet.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
-            Console.WriteLine("Saindo da " + nightclub.name + "\n", Color.BlueViolet);
+                await buyDrugs(jsonDrugs);
+            }
+            catch
+            {
+                Console.WriteLine("Erro!", Color.Red);
 
-            string jsonExitNightClub = "{\"exit_key\": \"" + nightclub.id.ToString() + "\", \"e_at\":null, \"reason\":\"Manual exit\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
-            var exitNightClub = await client.PostAsync("api/v1/nightclub/exit", new StringContent(jsonExitNightClub, Encoding.UTF8, "application/json"));
-            exitNightClub.EnsureSuccessStatusCode();           
+                if (await getRip() || await getPrison())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await enterNightclub();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await enterNightclub();
+                }
+            }
+
+            
+            try
+            {
+                Console.WriteLine("Saindo da " + nightclub.name + "\n", Color.BlueViolet);
+
+                string jsonExitNightClub = "{\"exit_key\": \"" + nightclub.id.ToString() + "\", \"e_at\":null, \"reason\":\"Manual exit\", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
+
+                var exitNightClub = await client.PostAsync("api/v1/nightclub/exit", new StringContent(jsonExitNightClub, Encoding.UTF8, "application/json"));
+                exitNightClub.EnsureSuccessStatusCode();
+            } catch
+            {
+
+            }
 
         }
 
@@ -181,7 +231,7 @@ namespace thecrims_bot.services
             if (this.rob.energy > this.user.stamina)
             {
 
-                if(this.user.addiction > 5)
+                if(this.user.addiction >= 70)
                 {
                     await Detox();
                 }
@@ -191,6 +241,7 @@ namespace thecrims_bot.services
 
             Console.WriteLine("Roubando " + this.rob.translated_name, Color.Yellow);
 
+            //string jsonRob = "{\"id\":40, \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
             string jsonRob = "{\"id\": " + this.rob.id + ", \"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
 
             try
@@ -198,13 +249,15 @@ namespace thecrims_bot.services
                 var rob = await client.PostAsync("api/v1/rob", new StringContent(jsonRob, Encoding.UTF8, "application/json"));
                 string stringRob = rob.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 this.user = parser.parseUser(stringRob);
-                Console.WriteLine(user.ToString(), Color.Green);
+                Console.WriteLine("Sucesso! " + "Respeito: " + this.user.respect + " Inteligência: " + this.user.intelligence + " Força: " + this.user.strength + " Carisma: " + this.user.charisma + " Resistência: " + this.user.tolerance, Color.Green);
+                Console.WriteLine("Estamina: " + this.user.stamina + "%" + " Vício: " + this.user.addiction + "%" + " Tickets: " + this.user.tickets, Color.Green);
+                Console.WriteLine("Grana: " + this.user.cash, Color.Green);
             }
             catch
             {
                 Console.WriteLine("Erro!", Color.Red);
 
-                if (await getRip())
+                if (await getRip() || await getPrison())
                 {
                     Console.WriteLine(this.msgRip, Color.DarkRed);
                     Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
@@ -220,6 +273,163 @@ namespace thecrims_bot.services
             }
         }
 
+        public async Task gangRob()
+        {
+            await getGangRobbery();
+
+            if (this.plannedRobbery != null)
+            {
+
+                bool executar = false;
+
+                while (!executar)
+                {
+
+                    executar = await verifyGangRobbery();
+
+                    if (executar)
+                    {
+                        Console.WriteLine("Executando roubo", Color.Yellow);
+                        string jsonExecute = "{\"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
+                        var robberyExecute = await client.PostAsync("api/v1/gangrobbery/execute", new StringContent(jsonExecute, Encoding.UTF8, "application/json"));
+                        Console.WriteLine("Roubo em gangue efetuado com sucesso!", Color.Green);
+                    }                   
+
+                }
+
+            }
+            else
+            {
+                await createGangRobbery();
+            }
+
+        }
+
+        public async Task<bool> verifyGangRobbery()
+        {
+
+            Console.WriteLine("Verificando se há usuários suficientes...", Color.Yellow);
+
+            var plannedRobbery = await client.GetAsync("api/v1/robberies");
+            string jsonPlannedRobbery = plannedRobbery.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            this.plannedRobbery = parser.parsePlannedRobbery(jsonPlannedRobbery);
+
+            int invitations = this.plannedRobbery.invitations.Where(s => s.status == 1).Count();
+            
+            if(invitations == this.plannedRobbery.required_members)
+            {
+                return await Task.FromResult(true);
+            }
+            else
+            {
+                return await Task.FromResult(false);
+            }
+
+        }
+
+        public async Task getGangRobbery()
+        {
+            this.plannedRobbery = null;
+
+            Console.WriteLine("Verificando se há roubo em gangue disponível...", Color.Yellow);
+
+            var plannedRobbery = await client.GetAsync("api/v1/robberies");
+            string jsonPlannedRobbery = plannedRobbery.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            this.plannedRobbery = parser.parsePlannedRobbery(jsonPlannedRobbery);
+            this.user = parser.parseUser(jsonPlannedRobbery);
+
+            if (this.plannedRobbery != null)
+            {
+
+                List<invitation> invitation = new List<invitation>();
+                invitation = this.plannedRobbery.invitations;
+
+                int verifyAccept = invitation.Where(s => s.username == "*" + this.user.username && s.status == 1).Count();
+
+                if (verifyAccept != 1)
+                {
+                    if (this.plannedRobbery.energy_per_participant > this.user.stamina)
+                    {
+
+                        if (this.user.addiction >= 70)
+                        {
+                            await Detox();
+                        }
+
+                        await enterNightclub();
+                    }
+
+                    await acceptGangRobbery();
+                }
+
+            }
+
+        }
+
+        public async Task acceptGangRobbery()
+        {
+
+            Console.WriteLine("Aceitando roubo em gangue...", Color.Yellow);
+
+            string jsonAccept = "{\"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
+
+            try
+            {
+
+                var robberyAccept = await client.PostAsync("api/v1/gangrobbery/accept", new StringContent(jsonAccept, Encoding.UTF8, "application/json"));
+                string stringAccept = robberyAccept.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                //this.plannedRobbery = parser.parsePlannedRobbery(stringAccept);
+                this.user = parser.parseUser(stringAccept);
+
+            } catch
+            {
+                Console.WriteLine("Erro!", Color.Red);
+
+                if (await getRip() || await getPrison())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await getVirtualGangRobbery();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await getVirtualGangRobbery();
+                }
+            }
+        }
+
+        public async Task createGangRobbery()
+        {
+            await getRobberies();
+
+            if (getBestGangRobbery().energy_per_participant > this.user.stamina)
+            {
+
+                if (this.user.addiction >= 70)
+                {
+                    await Detox();
+                }
+
+                await enterNightclub();
+            }
+
+            Console.WriteLine("Criando roubo em gangue...", Color.Yellow);
+
+            
+            int id = getBestGangRobbery().id;
+
+            string jsonCreateGangRobbery = "{\"id\":" + "2," + "\"input_counters\":{}, \"action_timestamp\":" + DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() + "}";
+            var gangRob = await client.PostAsync("api/v1/gangrobbery/plan", new StringContent(jsonCreateGangRobbery, Encoding.UTF8, "application/json"));
+
+            //string jsonGangRobbery = gangRob.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+        }
+
         public async Task Detox()
         {
 
@@ -231,7 +441,7 @@ namespace thecrims_bot.services
             }
             catch
             {
-                if (await getRip())
+                if (await getRip() || await getPrison())
                 {
                     Console.WriteLine(this.msgRip, Color.DarkRed);
                     Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
@@ -254,10 +464,18 @@ namespace thecrims_bot.services
 
         }
 
+        public GangRobbery getBestGangRobbery()
+        {
+
+            return this.gangRobbery.OrderByDescending(id => id.id).First(x => x.successprobability >= 100);
+
+        }
+
         public async Task<bool> getRip()
         {
             try
             {
+                Console.WriteLine("Verificando se foi para o hospital...\n", Color.OrangeRed);
                 var getRip = await client.GetAsync("api/v1/rip");
                 getRip.EnsureSuccessStatusCode();
                 string jsonRip = getRip.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -269,15 +487,172 @@ namespace thecrims_bot.services
                 } else
                 {
                     this.msgRip = mensagem;
+                    Console.WriteLine("Você foi para o hospital!", Color.DarkRed);
                     return await Task.FromResult(true);
                 }
 
             }
             catch
             {
-                return await getRip();
+                //return await getRip();
+                return false;
             }
             
+        }
+
+        public async Task<bool> getPrison()
+        {
+            try
+            {
+                Console.WriteLine("Verificando se foi para a prisão...\n", Color.OrangeRed);
+                var getPrison = await client.GetAsync("api/v1/prison");
+                getPrison.EnsureSuccessStatusCode();
+                string jsonPrison = getPrison.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                string mensagem = parser.parseRip(jsonPrison);
+
+                if (string.IsNullOrEmpty(mensagem))
+                {
+                    return await Task.FromResult(false);
+                }
+                else
+                {
+                    this.msgRip = mensagem;
+                    Console.WriteLine("Você foi preso!", Color.DarkRed);
+                    return await Task.FromResult(true);
+                }
+
+            }
+            catch
+            {
+                //return await getPrison();
+                return false;
+            }
+
+        }
+
+        public async Task getVirtualGangs()
+        {
+            try
+            {
+
+                Console.WriteLine("Procurando gangue virtual...", Color.Yellow);
+                var getGangs = await client.GetAsync("gang");
+                getGangs.EnsureSuccessStatusCode();
+                string htmlGangs = getGangs.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                this.gangsUrl = parser.getGangs(htmlGangs);
+            }
+            catch
+            {
+                Console.WriteLine("Erro!", Color.Red);
+
+                if (await getRip() || await getPrison())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await getVirtualGangs();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await getVirtualGangs();
+                }
+            }
+
+        }
+
+        public async Task joinVirtualGang()
+        {
+            try
+            {
+                Console.WriteLine("Entrando na gangue virtual...", Color.YellowGreen);
+                var dict = new Dictionary<string, string>();
+                dict.Add("message", "I+wanna+join");
+                var req = new HttpRequestMessage(HttpMethod.Post, "https://www.thecrims.com" + gangsUrl[0]) { Content = new FormUrlEncodedContent(dict) };
+                var res = await client.SendAsync(req);
+
+            }
+            catch
+            {
+                Console.WriteLine("Erro!", Color.Red);
+
+                if (await getRip() || await getPrison())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await joinVirtualGang();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await getVirtualGangs();
+                    await joinVirtualGang();
+                }
+            }
+        }
+
+        public async Task getVirtualGangRobbery()
+        {
+
+            Console.WriteLine("Verificando roubo em gangue...", Color.Yellow);
+
+            try
+            {
+
+                var plannedRobbery = await client.GetAsync("api/v1/gangrobbery");
+                string jsonPlannedRobbery = plannedRobbery.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                this.plannedRobbery = parser.parseVirtualPlannedRobbery(jsonPlannedRobbery);
+            }
+            catch
+            {
+                Console.WriteLine("Erro!", Color.Red);
+
+                if (await getRip() || await getPrison())
+                {
+                    Console.WriteLine(this.msgRip, Color.DarkRed);
+                    Console.WriteLine("Tentando novamente em 5 minutos...", Color.Yellow);
+                    Thread.Sleep(5 * 60 * 1000);
+                    await getVirtualGangRobbery();
+                }
+                else
+                {
+
+                    Console.Write("Tentando novamente...", Color.Yellow);
+                    await getVirtualGangRobbery();
+                }
+            }
+            //this.user = parser.parseUser(jsonPlannedRobbery);
+
+            if (this.plannedRobbery != null)
+            {
+
+                List<invitation> invitation = new List<invitation>();
+                invitation = this.plannedRobbery.invitations;
+
+                int verifyAccept = invitation.Where(s => s.username == "*" + this.user.username && s.status == 1).Count();
+
+                if (verifyAccept != 1)
+                {
+                    if (this.plannedRobbery.energy_per_participant > this.user.stamina)
+                    {
+
+                        if (this.user.addiction >= 70)
+                        {
+                            await Detox();
+                        }
+
+                        await enterNightclub();
+                    }
+
+                    await acceptGangRobbery();
+                }
+
+            }
+
         }
 
     }
