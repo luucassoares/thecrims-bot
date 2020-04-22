@@ -24,7 +24,7 @@ namespace thecrims_bot.console
         {
 
             var userTable = new ConsoleTable("Username", "Spirit Name", "Respect", "Tickets", "Stamina", "Addiction", "Cash");
-            userTable.AddRow(this.service.user.username, this.service.user.spirit_name, this.service.user.respect, this.service.user.tickets, this.service.user.stamina, this.service.user.addiction, this.service.user.cash.ToString("$ #,###"));
+            userTable.AddRow(this.service.user.username, this.service.user.spirit_name, this.service.user.respect, this.service.user.tickets, this.service.user.stamina + "%", this.service.user.addiction + "%", this.service.user.cash.ToString("$#,###"));
 
             var userStatsTable = new ConsoleTable("Intelligence", "Strength", "Charisma", "Tolerance");
             userStatsTable.AddRow(this.service.user.intelligence, this.service.user.strength, this.service.user.charisma, this.service.user.tolerance);
@@ -82,6 +82,9 @@ namespace thecrims_bot.console
             while (!Console.KeyAvailable)
             {
                 if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Escape) break;
+                Console.Clear();
+                showTheCrimsBot();
+                showInfo();
                 await this.service.Rob();
             }
 
@@ -93,6 +96,9 @@ namespace thecrims_bot.console
 
         public async Task virtualGangRob()
         {
+            Console.Clear();
+            showTheCrimsBot();
+            showInfo();
             await this.service.getVirtualGangs();
             await this.service.joinVirtualGang();
 
@@ -102,9 +108,10 @@ namespace thecrims_bot.console
                 if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Escape) break;
                 try
                 {
+                    Console.Clear();
+                    showTheCrimsBot();
+                    showInfo();
                     await this.service.getVirtualGangRobbery();
-                    Console.WriteLine(this.service.user.ToString(), Color.Green);
-                    Console.WriteLine();
                     Thread.Sleep(1000);
                 }
                 catch
@@ -156,8 +163,8 @@ namespace thecrims_bot.console
         public async Task Logout()
         {
             await this.service.Logout();            
-            Thread.Sleep(2000);
-            Environment.Exit(0);
+            //Thread.Sleep(2000);
+            //Environment.Exit(0);
         }
 
     }  
